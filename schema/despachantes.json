@@ -1,0 +1,26 @@
+[
+  {
+    "name": "id",
+    "type": "INT64"
+  },
+  {
+    "name": "nome",
+    "type": "STRING"
+  },
+  {
+    "name": "status",
+    "type": "STRING"
+  },
+  {
+    "name": "cidade",
+    "type": "STRING"
+  },
+  {
+    "name": "vendas",
+    "type": "STRING"
+  },
+  {
+    "name": "data",
+    "type": "STRING"
+  }
+]
