@@ -7,9 +7,10 @@ from airflow.operators.empty import EmptyOperator
 import json
 from datetime import (datetime, timedelta)
 
-
+# DAG NAME
 DAG_ID = 'LOAD_FILE_CSV_TO_BIGQUERY'
 
+# CAPTURE INFORMATION IN FILE YML
 yaml_data = getLocalConfig(DAG_ID)
 TEMPLATE_SEARCH_PATH = f"{yaml_data['info_params']['template_search']['search_path']}{DAG_ID}"
 TEMPLATE_SEARCH_PATH_GLOBAL = yaml_data['info_params']['template_search']['search_path_global']
@@ -26,9 +27,11 @@ input = yaml_data['info_params']['path']['input']
 processing = yaml_data['info_params']['path']['processing']
 output = yaml_data['info_params']['path']['output']
 
+# INPUT DIRECTORIES AND FILES PROCESSING 
 source_object_IN = f'{input}/{file}.csv'
 source_object_PR = f'{processing}/{file}.csv'
 
+# READ JSON FILE TABLE SCHEMA
 with open(f'{TEMPLATE_SEARCH_PATH}/schema/{file}.json') as f:
     schema = json.load(f)
 
@@ -49,16 +52,18 @@ with DAG(
     tags=['raw_zone', 'ingestion'],
     template_searchpath=[TEMPLATE_SEARCH_PATH, TEMPLATE_SEARCH_PATH_GLOBAL]
 ) as dag:
-
+    # VALIDATION OF EXISTENCE OF THE FILE IN THE BUCKET
     check_existence = GCSObjectExistenceSensor(
         task_id=f'Validate_file_{file}.csv',
         bucket=bucket,
         object=source_object_IN,
         timeout=180
     )
+    # BEGINNING OF DAG OPERATION
     begin_task = EmptyOperator(
         task_id=f'Begin_{DAG_ID}'
     )
+    # MOVE INPUT FILE FOR PROCESSING
     moving_file = GCSToGCSOperator(
         task_id=f'Moving_file_{file}.csv_path_processing',
         source_bucket=bucket,
@@ -66,6 +71,7 @@ with DAG(
         destination_bucket=bucket,
         destination_object=f'{processing}/'
     )
+    # INGESTION OF DATA FROM THE FILE TO THE BUCKET
     load_to_bigquery = GCSToBigQueryOperator(
         task_id=f'Load_data_{file}.csv_to_bigquery',
         bucket=bucket,
@@ -79,6 +85,7 @@ with DAG(
         allow_quoted_newlines=True,
         field_delimiter=','
     )
+    # MOVE PROCESSING FILE TO OUTPUT
     moving_output = GCSToGCSOperator(
         task_id=f'Moving_file_{file}.csv_path_output',
         source_bucket=bucket,
@@ -86,10 +93,11 @@ with DAG(
         destination_bucket=bucket,
         destination_object=f'{output}/'
     )
+    # END OF DAG OPERATION
     end_task = EmptyOperator(
         task_id=f'End_{DAG_ID}'
     )
-
+    # DEPENDENCIES
     check_existence >> begin_task >> moving_file >> load_to_bigquery >> moving_output >> end_task
 
 
